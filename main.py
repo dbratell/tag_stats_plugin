@@ -11,6 +11,9 @@ from PyQt4.Qt import QDialog, QVBoxLayout, QPushButton, QMessageBox, QLabel
 from calibre_plugins.tag_stats_plugin.config import prefs
 from calibre_plugins.tag_stats_plugin.chart_dialog import ChartDialog
 from operator import itemgetter
+import fnmatch
+import re
+import string
 
 class TagStatsDialog(QDialog):
 
@@ -80,33 +83,41 @@ class TagStatsDialog(QDialog):
         QMessageBox.about(self, 'About the Tag Stats Plugin Prototype',
                 text.decode('utf-8'))
 
+    def tag_list_to_regexp(self, tag_list):
+        ''' Convert a list of alternative globs to a single regexp. '''
+        return re.compile("(?:" + string.join(map(fnmatch.translate, tag_list), ")|(?:") + ")")
+    
     def count_genres(self):
         ''' Count the genres and list the most common ones. '''
 
         genres = [
-            {'label':"Science Fiction", 'tags':["science fiction", "scifi", "science-fiction"]},
-            {'label':"Fantasy",      	'tags':["fantasy"]},
-            {'label':"Adventure",	'tags':["adventure"]},
-            {'label':"Thriller",	'tags':["thriller"]},
-            {'label':"Mystery",		'tags':["mystery", "detective", "sleuth"]},
-            {'label':"Romance",		'tags':["romance"]},
-            {'label':"Historical",	'tags':["historical"]},
-            {'label':"Humour",		'tags':["humour", "parody", "satire", "satirical"]},
-            {'label':"Military",	'tags':["military", "war"]},
+            {'label':"Science Fiction", 'tags':["science fiction*", "scifi*", "science-fiction*"]},
+            {'label':"Fantasy",      	'tags':["fantasy*"]},
+            {'label':"Adventure",	'tags':["adventure*"]},
+            {'label':"Thriller",	'tags':["thriller*"]},
+            {'label':"Mystery",		'tags':["mystery*", "*detective*", "*sleuth*"]},
+            {'label':"Romance",		'tags':["*romance*"]},
+            {'label':"Historical",	'tags':["*historical*"]},
+            {'label':"Humour",		'tags':["*humour*", "*parody*", "*satire*", "*satirical*"]},
+            {'label':"Military",	'tags':["*military*", "*war*"]},
+            ]
+
+        locations = [
+            {'label':"America", 'tags':["*america*", "*usa*", "*canada*", "*mexico*", "*brazil*"]},
+            {'label':"Europe",	'tags':["*europe*", "*sweden*", "*germany*", "*britain*", "*france*", "*italy*", "*ireland*", "*spain*", "*portugal*", "*poland*", "*russia*"]},
+            {'label':"Africa",	'tags':["*africa*", "*egypt*"]},
+            {'label':"Asia",	'tags':["*asia*", "*japan*", "*china*", "*hongkong*", "*singapore*", "*india*", "*iraq*", "*iran*"]},
+            {'label':"Oceania",	'tags':["*ocenania*", "*australia*", "*new zeeland*"]},
             ]
 
         for genre in genres:
+            # Change globs to regexps.
+            genre['tags'] = self.tag_list_to_regexp(genre['tags'])
             genre['count'] = 0
         
-        locations = [
-            {'label':"America", 'tags':["america", "usa", "canada", "mexico", "brazil"]},
-            {'label':"Europe",	'tags':["europe", "sweden", "germany", "britain", "france", "italy"]},
-            {'label':"Africa",	'tags':["africa", "egypt"]},
-            {'label':"Asia",	'tags':["asia", "japan", "china", "hongkong", "singapore", "india", "iraq", "iran"]},
-            {'label':"Oceania",	'tags':["ocenaia", "australia", "new zeeland"]},
-            ]
-
         for location in locations:
+            # Change globs to regexps.
+            location['tags'] = self.tag_list_to_regexp(location['tags'])
             location['count'] = 0
             
         tags_column_idx = self.db.FIELD_MAP['tags']
@@ -123,45 +134,31 @@ class TagStatsDialog(QDialog):
             total_book_count = total_book_count + 1
             known_genre_tag = False
             known_location_tag = False
+
+            # This became much slower when going from "in string" matching to regexps. Too slow?
             if tags:
-                tags = tags.lower()
-                for genre in genres:
-                    for genre_tag in genre['tags']:
-                        if genre_tag in tags:
+                for tag in tags.lower().split(','):
+                    for genre in genres:
+                        genre_tag_regexp = genre['tags']
+                        if genre_tag_regexp.match(tag):
                             genre['count'] = genre['count'] + 1
                             known_genre_tag = True
-                            break
                     
-                for location in locations:
-                    for location_tag in location['tags']:
-                        if location_tag in tags:
+                    for location in locations:
+                        location_tag_regexp = location['tags']
+                        if location_tag_regexp.match(tag):
                             location['count'] = location['count'] + 1
                             known_location_tag = True
-                            break
 
             if not known_genre_tag:
                 unknown_genre_book_count = unknown_genre_book_count + 1
 
             if not known_location_tag:
                 unknown_location_book_count = unknown_location_book_count + 1
-        results = []
-        genre_results = []
-        for genre in genres:
-            if genre['count'] > 0:
-                genre_results.append((genre['label'], genre['count']))
-        list.sort(genre_results, key=lambda item: item[1])
-        genre_results.append(("Unknown", unknown_genre_book_count))
-        results.append(("Genre", genre_results))
 
-        location_results = []
-        for location in locations:
-            if location['count'] > 0:
-                location_results.append((location['label'], location['count']))
-        location_results.append(("Unknown", unknown_location_book_count))
-        list.sort(location_results, key=itemgetter(1), reverse=True)
-        results.append(("Location", location_results))
-        #        result_text = 'SciFi: {5}, Fantasy: {2}, Adventure: {3}, Thriller: {4}, Mystery: {6}, Romance: {7} of a total of {0} books. ({1} had no known genre)'.format(*counts)
-#        QMessageBox.information(self, 'Distribution of genres', result_text)
+        results = []
+        self.add_result_to_results(results, genres, unknown_genre_book_count, "Genre")
+        self.add_result_to_results(results, locations, unknown_location_book_count, "Location")
 
         dialog = ChartDialog(self.gui, self.icon, total_book_count, results)
         dialog.show()
@@ -172,7 +169,8 @@ class TagStatsDialog(QDialog):
             if category['count'] > 0:
                 category_results.append((category['label'], category['count']))
         list.sort(category_results, key=itemgetter(1), reverse=True)
-        category_results.append(("Unknown", unknown_count))
+        if unknown_count > 0:
+            category_results.append(("Unknown", unknown_count))
         results.append((title, category_results))
 
     def marked(self):

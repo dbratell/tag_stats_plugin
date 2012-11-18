@@ -65,8 +65,8 @@ class ChartDialog(qt.QDialog):
         # Bars.
         for (label, value) in results:
             color = qt.QColor()
-            color.setHsv(hue, 255, 255)
-            hue = (hue + 70) % 256
+            color.setHsv(hue, 160, 255)
+            hue = (hue + 91) % 256
 
             # Bar.
             bar_height = value * chart_height / scaler
