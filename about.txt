@@ -1,0 +1,7 @@
+Tag Stats Plugin
+===========================
+
+Created by Daniel Bratell
+
+Requires calibre >= 0.7.53
+
