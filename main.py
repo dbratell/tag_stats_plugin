@@ -137,18 +137,22 @@ class TagStatsDialog(QDialog):
 
             # This became much slower when going from "in string" matching to regexps. Too slow?
             if tags:
-                for tag in tags.lower().split(','):
-                    for genre in genres:
-                        genre_tag_regexp = genre['tags']
+                book_tag_list = tags.lower().split(',')
+                for genre in genres:
+                    genre_tag_regexp = genre['tags']
+                    for tag in book_tag_list:
                         if genre_tag_regexp.match(tag):
                             genre['count'] = genre['count'] + 1
                             known_genre_tag = True
+                            break
                     
-                    for location in locations:
-                        location_tag_regexp = location['tags']
+                for location in locations:
+                    location_tag_regexp = location['tags']
+                    for tag in book_tag_list:
                         if location_tag_regexp.match(tag):
                             location['count'] = location['count'] + 1
                             known_location_tag = True
+                            break
 
             if not known_genre_tag:
                 unknown_genre_book_count = unknown_genre_book_count + 1
