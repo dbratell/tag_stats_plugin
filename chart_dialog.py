@@ -7,6 +7,7 @@ __copyright__ = '2012, Daniel Bratell <bratell@lysator.liu.se>'
 __docformat__ = 'restructuredtext en'
 
 import PyQt4.Qt as qt
+from math import sqrt
 
 #from calibre_plugins.tag_stats_plugin.config import prefs
 
@@ -47,7 +48,7 @@ class ChartDialog(qt.QDialog):
 
         bar_width = 40
         spacing = 30
-        chart_height = 300
+        chart_height = 400
         scaler = max_value
         spacing_below_bars = 10
         hue = 160
@@ -64,9 +65,14 @@ class ChartDialog(qt.QDialog):
 
         # Bars.
         for (label, value) in results:
+            # Select colors so that there is distinct gaps but they never overlap.
+            # Looking at the hue scale as a circle and rotating around it in 1/phi
+            # (~220 degree) steps turn out to be very good. Thanks to http://vihart.com/
+            # and her spirals and fibonacci number video for reminding me of this.
             color = qt.QColor()
-            color.setHsv(hue, 160, 255)
-            hue = (hue + 91) % 256
+            color.setHsv(hue, 180, 255)
+            phi = (1 + sqrt(5)) / 2
+            hue = (hue + 256 / phi) % 256
 
             # Bar.
             bar_height = value * chart_height / scaler
