@@ -91,22 +91,26 @@ class TagStatsDialog(QDialog):
         ''' Count the genres and list the most common ones. '''
 
         genres = [
-            {'label':"Science Fiction", 'tags':["science fiction*", "scifi*", "science-fiction*"]},
-            {'label':"Fantasy",      	'tags':["fantasy*"]},
+            {'label':"Science Fiction", 'tags':["science fiction*", "scifi*", "science-fiction*", "space*", "*other planet*", "sagas"]},
+            {'label':"Fantasy",      	'tags':["fantasy*", "magic*"]},
             {'label':"Adventure",	'tags':["adventure*"]},
-            {'label':"Thriller",	'tags':["thriller*"]},
-            {'label':"Mystery",		'tags':["mystery*", "*detective*", "*sleuth*"]},
-            {'label':"Romance",		'tags':["*romance*"]},
+            {'label':"Thriller",	'tags':["thriller*", "suspense*", "psychological*", "espionage*"]},
+            {'label':"Mystery",		'tags':["mystery*", "*detective*", "*sleuth*", "murder*"]},
+            {'label':"Romance",		'tags':["*romance*", "love*", "*romantic*"]},
             {'label':"Historical",	'tags':["*historical*"]},
             {'label':"Humour",		'tags':["*humour*", "*parody*", "*satire*", "*satirical*"]},
+            {'label':"Criminal",	'tags':["Criminal*", "Police*", "hard-boiled*"]},
             {'label':"Military",	'tags':["*military*", "*war*"]},
+            {'label':"Erotica",		'tags':["*erotica*", "anal", "bdsm", "sex"]},
+            {'label':"Religion",	'tags':["*religio*", "*christianity*", "*islam*", "*muslim*", "*buddhism*", "*hinduism*", "*catholi*", "*protestantism*"]},
+            {'label':"Non Fiction",	'tags':["biography*", "*non fiction*", "*memoirs*", "*business*economy*", "travel", "computers*", "finance", "mathematics", "physics", "zoology", "programming*"]},
             ]
 
         locations = [
-            {'label':"America", 'tags':["*america*", "*usa*", "*canada*", "*mexico*", "*brazil*"]},
-            {'label':"Europe",	'tags':["*europe*", "*sweden*", "*germany*", "*britain*", "*france*", "*italy*", "*ireland*", "*spain*", "*portugal*", "*poland*", "*russia*"]},
+            {'label':"America", 'tags':["*america*", "*usa*", "*canad*", "*mexico*", "*brazil*", "*new york*", "NY", "*california*", "boston", "*los angeles*", "la", "*massachusetts*", "*texas*", "*north carolina*", "westerns", "*chicago*", "*florida*", "*maine*", "*alaska*", "n.y.", "seattle*", "new england", "new jersey", "*manhattan*", "*illinois*", "minnesota", "*new orleans*", "united states*", "montana", "las vegas*"]},
+            {'label':"Europe",	'tags':["*europe*", "*sweden*", "*germany*", "*britain*", "*france*", "*italy*", "*ireland*", "*spain*", "*portugal*", "*poland*", "*russia*", "london", "rome", "english*", "*scotland*", "ireland", "england", "paris", "soviet*", "wales", "greece"]},
             {'label':"Africa",	'tags':["*africa*", "*egypt*"]},
-            {'label':"Asia",	'tags':["*asia*", "*japan*", "*china*", "*hongkong*", "*singapore*", "*india*", "*iraq*", "*iran*"]},
+            {'label':"Asia",	'tags':["*asia*", "*japan*", "*china*", "*hongkong*", "*singapore*", "*india*", "*iraq*", "*iran*", "*middle east*", "*far east*", "*vietnam*", "*pakistan*"]},
             {'label':"Oceania",	'tags':["*ocenania*", "*australia*", "*new zeeland*"]},
             ]
 
