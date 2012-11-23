@@ -86,24 +86,41 @@ class TagStatsDialog(QDialog):
     def tag_list_to_regexp(self, tag_list):
         ''' Convert a list of alternative globs to a single regexp. '''
         return re.compile("(?:" + string.join(map(fnmatch.translate, tag_list), ")|(?:") + ")")
+
+
+    def increase_string_count(self, counter, string):
+        ''' Add 1 to counter[string] (assuming missing value means 0). '''
+        if string in counter:
+            counter[string] = counter[string] + 1
+        else:
+            counter[string] = 1
     
+    def add_tags_to_counter(self, counter, tags):
+        ''' Add 1 to counter[tag] for every tag in tags '''
+        if tags:
+            for tag in tags:
+                self.increase_string_count(counter, tag)
+        
     def count_genres(self):
         ''' Count the genres and list the most common ones. '''
 
         genres = [
             {'label':"Science Fiction", 'tags':["science fiction*", "scifi*", "science-fiction*", "space*", "*other planet*", "sagas"]},
             {'label':"Fantasy",      	'tags':["fantasy*", "magic*"]},
-            {'label':"Adventure",	'tags':["adventure*"]},
+            {'label':"Adventure",	'tags':["*adventure*"]},
             {'label':"Thriller",	'tags':["thriller*", "suspense*", "psychological*", "espionage*"]},
             {'label':"Mystery",		'tags':["mystery*", "*detective*", "*sleuth*", "murder*"]},
             {'label':"Romance",		'tags':["*romance*", "love*", "*romantic*"]},
             {'label':"Historical",	'tags':["*historical*"]},
-            {'label':"Humour",		'tags':["*humour*", "*parody*", "*satire*", "*satirical*"]},
+            {'label':"Humour",		'tags':["*humour*", "*humorous*", "*parody*", "*satire*", "*satirical*"]},
             {'label':"Criminal",	'tags':["Criminal*", "Police*", "hard-boiled*"]},
             {'label':"Military",	'tags':["*military*", "*war*"]},
             {'label':"Erotica",		'tags':["*erotica*", "anal", "bdsm", "sex"]},
             {'label':"Religion",	'tags':["*religio*", "*christianity*", "*islam*", "*muslim*", "*buddhism*", "*hinduism*", "*catholi*", "*protestantism*"]},
-            {'label':"Non Fiction",	'tags':["biography*", "*non fiction*", "*memoirs*", "*business*economy*", "travel", "computers*", "finance", "mathematics", "physics", "zoology", "programming*"]},
+            {'label':"Horror",		'tags':["*horror*", "*fear*", "*zombies*"]},
+            {'label':"Classics",	'tags':["classics", "literature -classics"]},
+            {'label':"Juvenile",	'tags':["*juvenile*", "*children's*"]},
+            {'label':"Non Fiction",	'tags':["biography*", "*non fiction*", "*memoirs*", "*business*econom*", "travel", "computers*", "finance", "mathematics", "physics", "zoology", "programming*", "social science*", "political science*", "medical", "usenet", "reference*", "science", "*non-fiction*", "language arts*"]},
             ]
 
         locations = [
@@ -113,6 +130,8 @@ class TagStatsDialog(QDialog):
             {'label':"Asia",	'tags':["*asia*", "*japan*", "*china*", "*hongkong*", "*singapore*", "*india*", "*iraq*", "*iran*", "*middle east*", "*far east*", "*vietnam*", "*pakistan*"]},
             {'label':"Oceania",	'tags':["*ocenania*", "*australia*", "*new zeeland*"]},
             ]
+
+        over_generic_tags = ["fiction", "general", "literary", "fiction - general", "ebook", "book", "general & literary fiction", "essays", "general fiction"]
 
         for genre in genres:
             # Change globs to regexps.
@@ -130,6 +149,8 @@ class TagStatsDialog(QDialog):
         total_book_count = 0
         unknown_genre_book_count = 0
         unknown_location_book_count = 0
+        common_tags_on_unknown_genre = {}
+        common_tags_on_unknown_location = {}
         for record in self.db.data:
 #        for record in self.db.data.iterall():
             # Iterate over all records
@@ -140,6 +161,7 @@ class TagStatsDialog(QDialog):
             known_location_tag = False
 
             # This became much slower when going from "in string" matching to regexps. Too slow?
+            book_tag_list = []
             if tags:
                 book_tag_list = tags.lower().split(',')
                 for genre in genres:
@@ -160,10 +182,31 @@ class TagStatsDialog(QDialog):
 
             if not known_genre_tag:
                 unknown_genre_book_count = unknown_genre_book_count + 1
+                self.add_tags_to_counter(common_tags_on_unknown_genre, book_tag_list)
 
             if not known_location_tag:
                 unknown_location_book_count = unknown_location_book_count + 1
+                self.add_tags_to_counter(common_tags_on_unknown_location, book_tag_list)
 
+        for over_generic_tag in over_generic_tags:
+            if over_generic_tag in common_tags_on_unknown_genre:
+                del common_tags_on_unknown_genre[over_generic_tag]
+            if over_generic_tag in common_tags_on_unknown_location:
+                del common_tags_on_unknown_location[over_generic_tag]
+
+        common_strange_genre_tags = sorted(common_tags_on_unknown_genre.items(), key=itemgetter(1), reverse=True)
+        print("\nCommon tags in books with unknown genre:")
+        for i in range(20):
+            (tag, count) = common_strange_genre_tags[i]
+            print(str(i + 1) + ". " + tag + " (" + str(count) + ")")
+
+        # The output from this just lists common genres. Meaningless.
+        common_strange_location_tags = sorted(common_tags_on_unknown_location.items(), key=itemgetter(1), reverse=True)
+        print("\nCommon tags in books with unknown location:")
+        for i in range(20):
+            (tag, count) = common_strange_location_tags[i]
+            print(str(i + 1) + ". " + tag + " (" + str(count) + ")")
+            
         results = []
         self.add_result_to_results(results, genres, unknown_genre_book_count, "Genre")
         self.add_result_to_results(results, locations, unknown_location_book_count, "Location")

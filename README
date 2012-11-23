@@ -1,3 +1,24 @@
 This is an early attempt at a calibre plugin. Not finished.
 
 Note to self: Triggered with Ctrl+Shift+F6
+
+TODO:
+* Toolbar icon
+* Configure tag lists
+* UI for "common strange tags"
+* UI for "over generic tags"
+* Clear out demo-cruft
+* Better looking bar charts
+* Centered labels on bar chart
+* "My grade" bars
+* "Grade" bars
+* Most common author
+* Most common word in book
+* Most common "bigram" (bi-word?)
+* Most common book title
+* Most common word in book title
+* Books per year
+* Increase version number
+* Clean whitespace
+* Release
+
