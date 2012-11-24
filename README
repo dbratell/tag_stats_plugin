@@ -21,4 +21,7 @@ TODO:
 * Increase version number
 * Clean whitespace
 * Release
-
+* Labels on the y axis
+* Same color on bars
+* Lines instead of bars on certain graphs?
+* Tooltips on bars in graphs

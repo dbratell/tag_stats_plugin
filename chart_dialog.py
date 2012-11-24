@@ -13,7 +13,7 @@ from math import sqrt
 
 class ChartDialog(qt.QDialog):
 
-    def __init__(self, gui, icon, max_value, result_list):
+    def __init__(self, gui, icon, result_list):
         qt.QDialog.__init__(self, gui)
         self.gui = gui
 
@@ -30,7 +30,7 @@ class ChartDialog(qt.QDialog):
         tab_widget = qt.QTabWidget()
         self.l.addWidget(tab_widget)
         
-        for (title,  results) in result_list:
+        for (title,  results, max_value) in result_list:
 #            self.l.addWidget(qt.QLabel(title))
             view = self.create_tab_content(title, max_value, results)
             tab_widget.addTab(view, title)
@@ -46,13 +46,18 @@ class ChartDialog(qt.QDialog):
         view = qt.QGraphicsView(scene)
 #        self.l.addWidget(view)
 
-        bar_width = 40
-        spacing = 30
+        max_bar_width = 40
+        preferred_chart_width = 700
+        relative_spacing = 2 / 3
+        preferred_bar_width = int(round(preferred_chart_width / len(results) / (1 + relative_spacing)))
+        bar_width = max(1, min(max_bar_width, preferred_bar_width))
+        spacing = int(round(relative_spacing * bar_width))
         chart_height = 400
         scaler = max_value
         spacing_below_bars = 10
         hue = 160
-        x = spacing / 2
+        x = int(round(spacing / 2))
+        last_label_x_pos = -1000000 # Enough to trigger a label at x = 0.
 
         # Frame for the chart.
         chart_width = len(results) * (bar_width + spacing)
@@ -80,17 +85,19 @@ class ChartDialog(qt.QDialog):
             scene.addRect(rect, qt.QPen(), qt.QBrush(color))
 
             # Label.
-            label_obj = scene.addText(label)
-            text_width = label_obj.textWidth()
-            # print(text_width)
-            # I would like to center the text but for that I need to
-            # know how wide it is and textWidth() keeps returning
-            # -1.0.
-            if text_width > 0:
-                label_x_pos = x + bar_width / 2 - text_width / 2
-            else:
-                label_x_pos = x
-            label_obj.setPos(label_x_pos, chart_height + spacing_below_bars)
+            if (bar_width > 20 or x - last_label_x_pos > 50):
+                label_obj = scene.addText(label)
+                text_width = label_obj.textWidth()
+                # print(text_width)
+                # I would like to center the text but for that I need to
+                # know how wide it is and textWidth() keeps returning
+                # -1.0.
+                if text_width > 0:
+                    label_x_pos = x + bar_width / 2 - text_width / 2
+                else:
+                    label_x_pos = x
+                label_obj.setPos(label_x_pos, chart_height + spacing_below_bars)
+                last_label_x_pos = label_x_pos
 
             x += bar_width + spacing
 

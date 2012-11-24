@@ -14,6 +14,8 @@ from operator import itemgetter
 import fnmatch
 import re
 import string
+from datetime import datetime
+from calibre.utils.date import UNDEFINED_DATE
 
 class TagStatsDialog(QDialog):
 
@@ -43,7 +45,7 @@ class TagStatsDialog(QDialog):
         self.l.addWidget(self.about_button)
 
         self.count_genres_button = QPushButton(
-            'Count genres and locations', self)
+            'Count genres, locations and publication years', self)
         self.count_genres_button.clicked.connect(self.count_genres)
         self.l.addWidget(self.count_genres_button)
 
@@ -88,6 +90,13 @@ class TagStatsDialog(QDialog):
         return re.compile("(?:" + string.join(map(fnmatch.translate, tag_list), ")|(?:") + ")")
 
 
+    def increase_number_count(self, counter, number):
+        ''' Add 1 to counter[number] (assuming missing value means 0). '''
+        if number in counter:
+            counter[number] = counter[number] + 1
+        else:
+            counter[number] = 1
+    
     def increase_string_count(self, counter, string):
         ''' Add 1 to counter[string] (assuming missing value means 0). '''
         if string in counter:
@@ -100,6 +109,8 @@ class TagStatsDialog(QDialog):
         if tags:
             for tag in tags:
                 self.increase_string_count(counter, tag)
+        else:
+            self.increase_string_count(counter, "No tag at all")
         
     def count_genres(self):
         ''' Count the genres and list the most common ones. '''
@@ -107,20 +118,20 @@ class TagStatsDialog(QDialog):
         genres = [
             {'label':"Science Fiction", 'tags':["science fiction*", "scifi*", "science-fiction*", "space*", "*other planet*", "sagas"]},
             {'label':"Fantasy",      	'tags':["fantasy*", "magic*"]},
-            {'label':"Adventure",	'tags':["*adventure*"]},
-            {'label':"Thriller",	'tags':["thriller*", "suspense*", "psychological*", "espionage*"]},
+            {'label':"Adventure",	'tags':["*adventure*", "*pirates*"]},
+            {'label':"Thriller",	'tags':["*thriller*", "suspense*", "psychological*", "espionage*"]},
             {'label':"Mystery",		'tags':["mystery*", "*detective*", "*sleuth*", "murder*"]},
             {'label':"Romance",		'tags':["*romance*", "love*", "*romantic*"]},
             {'label':"Historical",	'tags':["*historical*"]},
-            {'label':"Humour",		'tags':["*humour*", "*humorous*", "*parody*", "*satire*", "*satirical*"]},
-            {'label':"Criminal",	'tags':["Criminal*", "Police*", "hard-boiled*"]},
+            {'label':"Humour",		'tags':["*humour*", "*humorous*", "*parody*", "*satire*", "*satirical*", "humor*"]},
+            {'label':"Criminal",	'tags':["Criminal*", "Police*", "hard-boiled*", "crime"]},
             {'label':"Military",	'tags':["*military*", "*war*"]},
             {'label':"Erotica",		'tags':["*erotica*", "anal", "bdsm", "sex"]},
             {'label':"Religion",	'tags':["*religio*", "*christianity*", "*islam*", "*muslim*", "*buddhism*", "*hinduism*", "*catholi*", "*protestantism*"]},
             {'label':"Horror",		'tags':["*horror*", "*fear*", "*zombies*"]},
             {'label':"Classics",	'tags':["classics", "literature -classics"]},
             {'label':"Juvenile",	'tags':["*juvenile*", "*children's*"]},
-            {'label':"Non Fiction",	'tags':["biography*", "*non fiction*", "*memoirs*", "*business*econom*", "travel", "computers*", "finance", "mathematics", "physics", "zoology", "programming*", "social science*", "political science*", "medical", "usenet", "reference*", "science", "*non-fiction*", "language arts*"]},
+            {'label':"Non Fiction",	'tags':["biography*", "*non fiction*", "*memoirs*", "*business*econom*", "travel", "computers*", "finance", "mathematics", "physics", "zoology", "programming*", "social science*", "political science*", "medical", "usenet", "reference*", "science", "*non-fiction*", "language arts*", "philosophy", "*edcuation*", "*nonfiction*"]},
             ]
 
         locations = [
@@ -131,7 +142,7 @@ class TagStatsDialog(QDialog):
             {'label':"Oceania",	'tags':["*ocenania*", "*australia*", "*new zeeland*"]},
             ]
 
-        over_generic_tags = ["fiction", "general", "literary", "fiction - general", "ebook", "book", "general & literary fiction", "essays", "general fiction"]
+        over_generic_tags = ["fiction", "general", "literary", "fiction - general", "ebook", "book", "general & literary fiction", "essays", "general fiction", "fiction & literature", "popular literature"]
 
         for genre in genres:
             # Change globs to regexps.
@@ -144,6 +155,7 @@ class TagStatsDialog(QDialog):
             location['count'] = 0
             
         tags_column_idx = self.db.FIELD_MAP['tags']
+        pubdate_column_idx = self.db.FIELD_MAP['pubdate']
 #        labels = ["Total", "Unknown", "Science Fiction", "Fantasy", "Adventure", "Thriller", "Mystery", "Romance"]
 #        counts = [0, 0, 0, 0, 0, 0, 0, 0]; # Total, None/Other, Science Fiction, Fantasy, Adventure, Thriller, Mystery, Romance
         total_book_count = 0
@@ -151,6 +163,8 @@ class TagStatsDialog(QDialog):
         unknown_location_book_count = 0
         common_tags_on_unknown_genre = {}
         common_tags_on_unknown_location = {}
+        year_histogram = {}
+        unknown_year_book_count = 0
         for record in self.db.data:
 #        for record in self.db.data.iterall():
             # Iterate over all records
@@ -188,6 +202,20 @@ class TagStatsDialog(QDialog):
                 unknown_location_book_count = unknown_location_book_count + 1
                 self.add_tags_to_counter(common_tags_on_unknown_location, book_tag_list)
 
+
+            pubdate_datetime = record[pubdate_column_idx]
+#                pubdate_datetime = datetime.strptime(pubdate, "%Y-%m-%dT%H:%M:%s%z")
+#                print(str(pubdate_datetime))
+            # The handling of UNDEFINED_DATE has timezone troubles...
+            if pubdate_datetime.date() != UNDEFINED_DATE.date():
+                year = pubdate_datetime.year
+                if year < 1000:
+                    print("Bad pubdate (" + str(pubdate_datetime) + ") for book " + str(record[self.db.FIELD_MAP['title']]) + " by " + str(record[self.db.FIELD_MAP['authors']]))
+                    print("UNDEFINED_DATE = " + str(UNDEFINED_DATE))
+                self.increase_number_count(year_histogram, year)
+            else:
+                unknown_year_book_count = unknown_year_book_count + 1
+            
         for over_generic_tag in over_generic_tags:
             if over_generic_tag in common_tags_on_unknown_genre:
                 del common_tags_on_unknown_genre[over_generic_tag]
@@ -196,25 +224,37 @@ class TagStatsDialog(QDialog):
 
         common_strange_genre_tags = sorted(common_tags_on_unknown_genre.items(), key=itemgetter(1), reverse=True)
         print("\nCommon tags in books with unknown genre:")
-        for i in range(20):
+        for i in range(min(20, len(common_strange_genre_tags))):
             (tag, count) = common_strange_genre_tags[i]
             print(str(i + 1) + ". " + tag + " (" + str(count) + ")")
 
         # The output from this just lists common genres. Meaningless.
         common_strange_location_tags = sorted(common_tags_on_unknown_location.items(), key=itemgetter(1), reverse=True)
         print("\nCommon tags in books with unknown location:")
-        for i in range(20):
+        for i in range(min(20, len(common_strange_location_tags))):
             (tag, count) = common_strange_location_tags[i]
             print(str(i + 1) + ". " + tag + " (" + str(count) + ")")
+
+        # for year in sorted(year_histogram.keys()):
+        #     print(str(year) + " - " + str(year_histogram[year]))
             
         results = []
-        self.add_result_to_results(results, genres, unknown_genre_book_count, "Genre")
-        self.add_result_to_results(results, locations, unknown_location_book_count, "Location")
+        self.add_result_to_results(results, genres, unknown_genre_book_count, total_book_count, "Genre")
+        self.add_result_to_results(results, locations, unknown_location_book_count, total_book_count, "Location")
+        year_histogram_results = []
+        for year in range(min(year_histogram.keys()), max(year_histogram.keys()) + 1):
+            book_count_for_year = 0
+            if (year in year_histogram):
+                book_count_for_year = year_histogram[year]
+            year_histogram_results.append((str(year), book_count_for_year))
+        if unknown_year_book_count > 0:
+            year_histogram_results.append(("Unknown", unknown_year_book_count))
+        results.append(("Books per year", year_histogram_results, max(1, unknown_year_book_count, max(year_histogram.values()))))
 
-        dialog = ChartDialog(self.gui, self.icon, total_book_count, results)
+        dialog = ChartDialog(self.gui, self.icon, results)
         dialog.show()
 
-    def add_result_to_results(self, results, categories, unknown_count, title):
+    def add_result_to_results(self, results, categories, unknown_count, max_value, title):
         category_results = []
         for category in categories:
             if category['count'] > 0:
@@ -222,7 +262,7 @@ class TagStatsDialog(QDialog):
         list.sort(category_results, key=itemgetter(1), reverse=True)
         if unknown_count > 0:
             category_results.append(("Unknown", unknown_count))
-        results.append((title, category_results))
+        results.append((title, category_results, max_value))
 
     def marked(self):
         ''' Show books with only one format '''
