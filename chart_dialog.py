@@ -41,32 +41,79 @@ class ChartDialog(qt.QDialog):
         ''' Creates a chart area with the results in them and returns it. '''
 
         scene = qt.QGraphicsScene()
-#        scene.addText(result_text)
 
         view = qt.QGraphicsView(scene)
-#        self.l.addWidget(view)
 
+        top_margin = 5
         max_bar_width = 40
         preferred_chart_width = 700
         relative_spacing = 2 / 3
-        preferred_bar_width = int(round(preferred_chart_width / len(results) / (1 + relative_spacing)))
-        bar_width = max(1, min(max_bar_width, preferred_bar_width))
+        if results:
+            preferred_bar_width = int(round(preferred_chart_width / len(results) / (1 + relative_spacing)))
+            bar_width = max(1, min(max_bar_width, preferred_bar_width))
+        else:
+            bar_width = max_bar_width
         spacing = int(round(relative_spacing * bar_width))
         chart_height = 400
         scaler = max_value
-        spacing_below_bars = 10
-        hue = 160
-        x = int(round(spacing / 2))
+        hue = 170
+        x = 0
         last_label_x_pos = -1000000 # Enough to trigger a label at x = 0.
 
         # Frame for the chart.
-        chart_width = len(results) * (bar_width + spacing)
-        scene.addRect(qt.QRectF(0, 0, chart_width, chart_height))
+        if results:
+            chart_width = len(results) * (bar_width + spacing)
+        else:
+            chart_width = spacing # One half before and one half after.
         dashed_pen = qt.QPen()
         dashed_pen.setStyle(qt.Qt.DotLine)
-        for percentile in range(10, 100, 10):
-            percentile_y = percentile * chart_height / 100
-            scene.addLine(0, percentile_y, chart_width, percentile_y, dashed_pen)
+        # Find good places to put horizontal lines. We prefer_ to have
+        # the lines corresponding to integers.
+        if max_value > 30 or max_value < 1:
+            horizontal_line_gap = 10 # 10 percent lines
+        else:
+            horizontal_line_gap = 100.0 / max_value
+            while horizontal_line_gap < 8:
+                horizontal_line_gap = horizontal_line_gap * 2
+        line_number = 1
+        widest_label_width = 0
+        horizontal_lines = []
+        y_axis_labels = []
+        while round(line_number * horizontal_line_gap) <= 100:
+            percentile = line_number * horizontal_line_gap
+            percentile_y = top_margin + chart_height - round(percentile * chart_height / 100) # Grid fit.
+            horizontal_lines.append(scene.addLine(x, percentile_y, chart_width, percentile_y, dashed_pen))
+            # Y axis label.
+            label_text = str(int(round(percentile * max_value / 100)))
+            label_obj = scene.addSimpleText(label_text)
+            y_axis_labels.append((label_text, label_obj))
+            
+            metrics = qt.QFontMetrics(label_obj.font())
+            # The x position is adjusted after the loop when we know the width of the
+            # widest label.
+            label_obj.setPos(x, percentile_y - metrics.ascent() / 2)
+            metrics = qt.QFontMetrics(label_obj.font())
+            widest_label_width = max(widest_label_width, metrics.width(label_text))
+            
+            line_number = line_number + 1
+
+        # Move frame so it doesn't overlap with labels and right align labels.
+        if widest_label_width > 0:
+            x_gap_between_labels_and_frame = 1
+            x = x + widest_label_width + x_gap_between_labels_and_frame
+            # Move horizontal lines to the right so they don't overlap with the labels.
+            for horizontal_line in horizontal_lines:
+                horizontal_line.setPos(x, horizontal_line.pos().y())
+            # Move labels so that they are right aligned.
+            for (label_text, y_axis_label) in y_axis_labels:
+                metrics = qt.QFontMetrics(y_axis_label.font())
+                diff_to_widest = widest_label_width - metrics.width(label_text)
+                y_axis_label.setPos(y_axis_label.pos().x() + diff_to_widest, y_axis_label.pos().y()) 
+
+        # Outer frame.
+        scene.addRect(qt.QRectF(x, top_margin, chart_width, chart_height))
+        chart_bottom_y = top_margin + chart_height
+        x = x + int(round(spacing / 2))
 
         # Bars.
         for (label, value) in results:
@@ -81,22 +128,17 @@ class ChartDialog(qt.QDialog):
 
             # Bar.
             bar_height = value * chart_height / scaler
-            rect = qt.QRectF(x, chart_height - bar_height, bar_width, bar_height)
+            rect = qt.QRectF(x, chart_bottom_y - bar_height, bar_width, bar_height)
             scene.addRect(rect, qt.QPen(), qt.QBrush(color))
 
-            # Label.
+            # X axis label.
             if (bar_width > 20 or x - last_label_x_pos > 50):
-                label_obj = scene.addText(label)
-                text_width = label_obj.textWidth()
-                # print(text_width)
-                # I would like to center the text but for that I need to
-                # know how wide it is and textWidth() keeps returning
-                # -1.0.
-                if text_width > 0:
-                    label_x_pos = x + bar_width / 2 - text_width / 2
-                else:
-                    label_x_pos = x
-                label_obj.setPos(label_x_pos, chart_height + spacing_below_bars)
+                label_obj = scene.addSimpleText(label)
+                metrics = qt.QFontMetrics(label_obj.font())
+                text_width = metrics.width(label)
+                label_x_pos = x + bar_width / 2 - text_width / 2
+                # TODO Truncate over-wide labels.
+                label_obj.setPos(label_x_pos, chart_bottom_y)
                 last_label_x_pos = label_x_pos
 
             x += bar_width + spacing

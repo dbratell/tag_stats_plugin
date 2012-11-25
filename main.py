@@ -240,20 +240,30 @@ class TagStatsDialog(QDialog):
             
         results = []
         self.add_result_to_results(results, genres, unknown_genre_book_count, total_book_count, "Genre")
+        self.add_histogram_to_results(results, year_histogram, unknown_year_book_count, "Books per year")
         self.add_result_to_results(results, locations, unknown_location_book_count, total_book_count, "Location")
-        year_histogram_results = []
-        for year in range(min(year_histogram.keys()), max(year_histogram.keys()) + 1):
-            book_count_for_year = 0
-            if (year in year_histogram):
-                book_count_for_year = year_histogram[year]
-            year_histogram_results.append((str(year), book_count_for_year))
-        if unknown_year_book_count > 0:
-            year_histogram_results.append(("Unknown", unknown_year_book_count))
-        results.append(("Books per year", year_histogram_results, max(1, unknown_year_book_count, max(year_histogram.values()))))
 
         dialog = ChartDialog(self.gui, self.icon, results)
         dialog.show()
 
+    def add_histogram_to_results(self, results, histogram, unknown_count, title):
+        ''' Take a histogram (mapping from sample number to count) and insert
+        a result block (title, bars, scale) in results. '''
+        histogram_results = []
+        histogram_max_value = 1
+        if histogram:
+            for sample in range(min(histogram.keys()), max(histogram.keys()) + 1):
+                count_for_sample = 0
+                if (sample in histogram):
+                    count_for_sample = histogram[sample]
+                    histogram_max_value = max(histogram_max_value, histogram[sample])
+                histogram_results.append((str(sample), count_for_sample))
+        if unknown_count > 0:
+            histogram_results.append(("Unknown", unknown_count))
+            histogram_max_value = max(histogram_max_value, unknown_count)
+        results.append((title, histogram_results, histogram_max_value))
+
+        
     def add_result_to_results(self, results, categories, unknown_count, max_value, title):
         category_results = []
         for category in categories:
