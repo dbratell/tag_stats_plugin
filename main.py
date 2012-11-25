@@ -156,6 +156,7 @@ class TagStatsDialog(QDialog):
             
         tags_column_idx = self.db.FIELD_MAP['tags']
         pubdate_column_idx = self.db.FIELD_MAP['pubdate']
+        title_column_idx = self.db.FIELD_MAP['title']
 #        labels = ["Total", "Unknown", "Science Fiction", "Fantasy", "Adventure", "Thriller", "Mystery", "Romance"]
 #        counts = [0, 0, 0, 0, 0, 0, 0, 0]; # Total, None/Other, Science Fiction, Fantasy, Adventure, Thriller, Mystery, Romance
         total_book_count = 0
@@ -165,6 +166,7 @@ class TagStatsDialog(QDialog):
         common_tags_on_unknown_location = {}
         year_histogram = {}
         unknown_year_book_count = 0
+        title_word_counter = {}
         for record in self.db.data:
 #        for record in self.db.data.iterall(): # This would iterate over all books in the database.
             # Iterate over visible books.
@@ -174,6 +176,15 @@ class TagStatsDialog(QDialog):
             known_genre_tag = False
             known_location_tag = False
 
+            book_words = set()
+            for book_word in book_title.lower().split():
+                book_word = string.strip(book_word, ":&-()")
+                if book_word:
+                    book_words.add(book_word)
+
+            for book_word in book_words:
+                self.increase_string_count(title_word_counter, book_word)
+            
             # This became much slower when going from "in string" matching to regexps. Too slow?
             book_tag_list = []
             if tags:
@@ -210,7 +221,7 @@ class TagStatsDialog(QDialog):
             if pubdate_datetime.date() != UNDEFINED_DATE.date():
                 year = pubdate_datetime.year
                 if year < 1000:
-                    print("Bad pubdate (" + str(pubdate_datetime) + ") for book " + str(record[self.db.FIELD_MAP['title']]) + " by " + str(record[self.db.FIELD_MAP['authors']]))
+                    print("Bad pubdate (" + str(pubdate_datetime) + ") for book " + book_title + " by " + str(record[self.db.FIELD_MAP['authors']]))
                     print("UNDEFINED_DATE = " + str(UNDEFINED_DATE))
                 self.increase_number_count(year_histogram, year)
             else:
@@ -234,6 +245,19 @@ class TagStatsDialog(QDialog):
         for i in range(min(20, len(common_strange_location_tags))):
             (tag, count) = common_strange_location_tags[i]
             print(str(i + 1) + ". " + tag + " (" + str(count) + ")")
+
+        over_generic_book_title_words = ["the", "a", "of", "at", "in", "to", "on", "and", "for", "an", "from", "&", "-", "with", "is", "are", "was", "by"]
+        for over_generic_book_title_word in over_generic_book_title_words:
+            if over_generic_book_title_word in title_word_counter:
+                del title_word_counter[over_generic_book_title_word]
+
+        common_title_words = sorted(title_word_counter.items(), key=itemgetter(1), reverse=True)[:20]
+        print("\nCommon title words:")
+        common_word_pos = 1
+        for (common_title_word, common_title_word_count) in common_title_words:
+            print(str(common_word_pos) + ". " + common_title_word + " (" + str(common_title_word_count) + ")")
+            common_word_pos = common_word_pos + 1
+                
 
         # for year in sorted(year_histogram.keys()):
         #     print(str(year) + " - " + str(year_histogram[year]))
