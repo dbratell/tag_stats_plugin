@@ -166,9 +166,9 @@ class TagStatsDialog(QDialog):
         year_histogram = {}
         unknown_year_book_count = 0
         for record in self.db.data:
-#        for record in self.db.data.iterall():
-            # Iterate over all records
- #           # TODO - only iterate over the visible books.
+#        for record in self.db.data.iterall(): # This would iterate over all books in the database.
+            # Iterate over visible books.
+            book_title = record[title_column_idx]
             tags = record[tags_column_idx]
             total_book_count = total_book_count + 1
             known_genre_tag = False
