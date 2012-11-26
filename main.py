@@ -157,6 +157,8 @@ class TagStatsDialog(QDialog):
         tags_column_idx = self.db.FIELD_MAP['tags']
         pubdate_column_idx = self.db.FIELD_MAP['pubdate']
         title_column_idx = self.db.FIELD_MAP['title']
+        rating_column_idx = self.db.FIELD_MAP['rating']
+        
 #        labels = ["Total", "Unknown", "Science Fiction", "Fantasy", "Adventure", "Thriller", "Mystery", "Romance"]
 #        counts = [0, 0, 0, 0, 0, 0, 0, 0]; # Total, None/Other, Science Fiction, Fantasy, Adventure, Thriller, Mystery, Romance
         total_book_count = 0
@@ -165,6 +167,8 @@ class TagStatsDialog(QDialog):
         common_tags_on_unknown_genre = {}
         common_tags_on_unknown_location = {}
         year_histogram = {}
+        rating_integer_histogram = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+        rating_exact_histogram = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0 }
         unknown_year_book_count = 0
         title_word_counter = {}
         for record in self.db.data:
@@ -226,6 +230,14 @@ class TagStatsDialog(QDialog):
                 self.increase_number_count(year_histogram, year)
             else:
                 unknown_year_book_count = unknown_year_book_count + 1
+
+            rating = record[rating_column_idx]
+            print("Finding rating " + str(rating))
+            if rating:
+                print("Storing rating " + str(rating))
+                int_rating = int(rating / 2)
+                rating_integer_histogram[int_rating] = rating_integer_histogram[int_rating] + 1
+                rating_exact_histogram[rating] = rating_exact_histogram[rating] + 1
             
         for over_generic_tag in over_generic_tags:
             if over_generic_tag in common_tags_on_unknown_genre:
@@ -265,6 +277,8 @@ class TagStatsDialog(QDialog):
         results = []
         self.add_result_to_results(results, genres, unknown_genre_book_count, total_book_count, "Genre")
         self.add_histogram_to_results(results, year_histogram, unknown_year_book_count, "Books per year")
+        self.add_histogram_to_results(results, rating_integer_histogram, 0, "Ratings")
+        self.add_histogram_to_results(results, rating_exact_histogram, 0, "Exact ratings")
         self.add_result_to_results(results, locations, unknown_location_book_count, total_book_count, "Location")
 
         dialog = ChartDialog(self.gui, self.icon, results)

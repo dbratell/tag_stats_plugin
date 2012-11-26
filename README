@@ -20,7 +20,8 @@ TODO:
 * Increase version number
 * Clean whitespace
 * Release
-* Same color on bars
+* Same color on bars in histograms
+* More narrow bars in "exact ratings"
 * Lines instead of bars on certain graphs?
 * Tooltips on bars in graphs
 * Truncate x axis labels
