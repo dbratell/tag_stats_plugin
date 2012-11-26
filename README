@@ -26,3 +26,4 @@ TODO:
 * Tooltips on bars in graphs
 * Truncate x axis labels
 * Test that it works well when no books are available
+* Custom rating columns
