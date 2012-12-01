@@ -8,6 +8,7 @@ __docformat__ = 'restructuredtext en'
 
 import PyQt4.Qt as qt
 from math import sqrt
+from calibre_plugins.tag_stats_plugin.top_list_widget import TopListWidget
 
 #from calibre_plugins.tag_stats_plugin.config import prefs
 
@@ -23,27 +24,35 @@ class ChartDialog(qt.QDialog):
         # things.
         self.db = gui.current_db
 
-#        qt.QMessageBox.information(self, 'Distribution of genres', result_text)
         self.l = qt.QVBoxLayout()
         self.setLayout(self.l)
 
         tab_widget = qt.QTabWidget()
         self.l.addWidget(tab_widget)
         
-        for (title,  results, max_value) in result_list:
-#            self.l.addWidget(qt.QLabel(title))
-            view = self.create_tab_content(title, max_value, results)
-            tab_widget.addTab(view, title)
+        for section in result_list:
+            chart_type = section[0]
+            if chart_type == 'bar' or chart_type == 'histogram':
+                (chart_type, title, results, max_value) = section;
+                vary_colours = chart_type == 'bar'
+                view = self.create_tab_content(title, max_value, results, vary_colours)
+                tab_widget.addTab(view, title)
+            elif chart_type == 'list':
+                (chart_type, title, results) = section
+                tab_widget.addTab(TopListWidget(self.gui, results), title)
+            else:
+                qt.QMessageBox(gui, "Unknown chart type " + str(chart_type));
 
         self.resize(self.sizeHint())
         
-    def create_tab_content(self, title, max_value, results):
+    def create_tab_content(self, title, max_value, results, vary_colours):
         ''' Creates a chart area with the results in them and returns it. '''
 
         scene = qt.QGraphicsScene()
 
         view = qt.QGraphicsView(scene)
 
+        start_hue = 230 # 170 is cyan, 160 is greenish cyan, 190 is sky blue, 
         top_margin = 5
         max_bar_width = 40
         preferred_chart_width = 700
@@ -56,7 +65,7 @@ class ChartDialog(qt.QDialog):
         spacing = int(round(relative_spacing * bar_width))
         chart_height = 400
         scaler = max_value
-        hue = 170
+        hue = start_hue
         x = 0
         last_label_x_pos = -1000000 # Enough to trigger a label at x = 0.
 
@@ -123,8 +132,9 @@ class ChartDialog(qt.QDialog):
             # and her spirals and fibonacci number video for reminding me of this.
             color = qt.QColor()
             color.setHsv(hue, 180, 255)
-            phi = (1 + sqrt(5)) / 2
-            hue = (hue + 256 / phi) % 256
+            if vary_colours:
+                phi = (1 + sqrt(5)) / 2
+                hue = (hue + 256 / phi) % 256
 
             # Bar.
             bar_height = value * chart_height / scaler

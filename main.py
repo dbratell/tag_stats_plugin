@@ -136,7 +136,7 @@ class TagStatsDialog(QDialog):
 
         locations = [
             {'label':"America", 'tags':["*america*", "*usa*", "*canad*", "*mexico*", "*brazil*", "*new york*", "NY", "*california*", "boston", "*los angeles*", "la", "*massachusetts*", "*texas*", "*north carolina*", "westerns", "*chicago*", "*florida*", "*maine*", "*alaska*", "n.y.", "seattle*", "new england", "new jersey", "*manhattan*", "*illinois*", "minnesota", "*new orleans*", "united states*", "montana", "las vegas*"]},
-            {'label':"Europe",	'tags':["*europe*", "*sweden*", "*germany*", "*britain*", "*france*", "*italy*", "*ireland*", "*spain*", "*portugal*", "*poland*", "*russia*", "london", "rome", "english*", "*scotland*", "ireland", "england", "paris", "soviet*", "wales", "greece"]},
+            {'label':"Europe",	'tags':["*europe*", "*sweden*", "*germany*", "*britain*", "*france*", "*italy*", "*ireland*", "*spain*", "*portugal*", "*poland*", "*russia*", "london", "rome", "english*", "*scotland*", "ireland", "england", "paris", "soviet*", "wales", "greece", "*(wales)"]},
             {'label':"Africa",	'tags':["*africa*", "*egypt*"]},
             {'label':"Asia",	'tags':["*asia*", "*japan*", "*china*", "*hongkong*", "*singapore*", "*india*", "*iraq*", "*iran*", "*middle east*", "*far east*", "*vietnam*", "*pakistan*"]},
             {'label':"Oceania",	'tags':["*ocenania*", "*australia*", "*new zeeland*"]},
@@ -158,6 +158,7 @@ class TagStatsDialog(QDialog):
         pubdate_column_idx = self.db.FIELD_MAP['pubdate']
         title_column_idx = self.db.FIELD_MAP['title']
         rating_column_idx = self.db.FIELD_MAP['rating']
+        format_column_idx = self.db.FIELD_MAP['formats']
         
 #        labels = ["Total", "Unknown", "Science Fiction", "Fantasy", "Adventure", "Thriller", "Mystery", "Romance"]
 #        counts = [0, 0, 0, 0, 0, 0, 0, 0]; # Total, None/Other, Science Fiction, Fantasy, Adventure, Thriller, Mystery, Romance
@@ -171,6 +172,9 @@ class TagStatsDialog(QDialog):
         rating_exact_histogram = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0 }
         unknown_year_book_count = 0
         title_word_counter = {}
+        format_count_histogram = {}
+        format_counter = {}
+        
         for record in self.db.data:
 #        for record in self.db.data.iterall(): # This would iterate over all books in the database.
             # Iterate over visible books.
@@ -232,12 +236,20 @@ class TagStatsDialog(QDialog):
                 unknown_year_book_count = unknown_year_book_count + 1
 
             rating = record[rating_column_idx]
-            print("Finding rating " + str(rating))
             if rating:
-                print("Storing rating " + str(rating))
                 int_rating = int(rating / 2)
                 rating_integer_histogram[int_rating] = rating_integer_histogram[int_rating] + 1
                 rating_exact_histogram[rating] = rating_exact_histogram[rating] + 1
+
+            formats = record[format_column_idx]
+            format_count = 0
+            if formats:
+                format_list = formats.split(',')
+                format_count = len(format_list)
+                for format in format_list:
+                    self.increase_number_count(format_counter, format)
+            self.increase_number_count(format_count_histogram, format_count)
+            
             
         for over_generic_tag in over_generic_tags:
             if over_generic_tag in common_tags_on_unknown_genre:
@@ -252,25 +264,25 @@ class TagStatsDialog(QDialog):
             print(str(i + 1) + ". " + tag + " (" + str(count) + ")")
 
         # The output from this just lists common genres. Meaningless.
-        common_strange_location_tags = sorted(common_tags_on_unknown_location.items(), key=itemgetter(1), reverse=True)
-        print("\nCommon tags in books with unknown location:")
-        for i in range(min(20, len(common_strange_location_tags))):
-            (tag, count) = common_strange_location_tags[i]
-            print(str(i + 1) + ". " + tag + " (" + str(count) + ")")
+        # common_strange_location_tags = sorted(common_tags_on_unknown_location.items(), key=itemgetter(1), reverse=True)
+        # print("\nCommon tags in books with unknown location:")
+        # for i in range(min(20, len(common_strange_location_tags))):
+        #     (tag, count) = common_strange_location_tags[i]
+        #     print(str(i + 1) + ". " + tag + " (" + str(count) + ")")
 
         over_generic_book_title_words = ["the", "a", "of", "at", "in", "to", "on", "and", "for", "an", "from", "&", "-", "with", "is", "are", "was", "by"]
         for over_generic_book_title_word in over_generic_book_title_words:
             if over_generic_book_title_word in title_word_counter:
                 del title_word_counter[over_generic_book_title_word]
 
-        common_title_words = sorted(title_word_counter.items(), key=itemgetter(1), reverse=True)[:20]
+        top_list_max_length = 20
+        common_title_words = sorted(title_word_counter.items(), key=itemgetter(1), reverse=True)[:top_list_max_length]
         print("\nCommon title words:")
         common_word_pos = 1
         for (common_title_word, common_title_word_count) in common_title_words:
             print(str(common_word_pos) + ". " + common_title_word + " (" + str(common_title_word_count) + ")")
             common_word_pos = common_word_pos + 1
                 
-
         # for year in sorted(year_histogram.keys()):
         #     print(str(year) + " - " + str(year_histogram[year]))
             
@@ -280,7 +292,10 @@ class TagStatsDialog(QDialog):
         self.add_histogram_to_results(results, rating_integer_histogram, 0, "Ratings")
         self.add_histogram_to_results(results, rating_exact_histogram, 0, "Exact ratings")
         self.add_result_to_results(results, locations, unknown_location_book_count, total_book_count, "Location")
-
+        self.add_top_list_to_results(results, common_title_words, "Common title words")
+        self.add_counter_to_results(results, format_counter.items(), total_book_count, "Formats")
+        self.add_histogram_to_results(results, format_count_histogram, 0, "Formats/book")
+        
         dialog = ChartDialog(self.gui, self.icon, results)
         dialog.show()
 
@@ -299,9 +314,16 @@ class TagStatsDialog(QDialog):
         if unknown_count > 0:
             histogram_results.append(("Unknown", unknown_count))
             histogram_max_value = max(histogram_max_value, unknown_count)
-        results.append((title, histogram_results, histogram_max_value))
+        results.append(("histogram", title, histogram_results, histogram_max_value))
 
         
+    def add_counter_to_results(self, results, counter, max_value, title):
+        counter_results = []
+        for (label, count) in counter:
+            counter_results.append((label, count))
+        list.sort(counter_results, key=itemgetter(1), reverse=True)
+        results.append(("bar", title, counter_results, max_value))
+
     def add_result_to_results(self, results, categories, unknown_count, max_value, title):
         category_results = []
         for category in categories:
@@ -310,7 +332,14 @@ class TagStatsDialog(QDialog):
         list.sort(category_results, key=itemgetter(1), reverse=True)
         if unknown_count > 0:
             category_results.append(("Unknown", unknown_count))
-        results.append((title, category_results, max_value))
+        results.append(("bar", title, category_results, max_value))
+
+    def add_top_list_to_results(self, results, top_list, title):
+        ''' top_list needs to be pre-sorted and pre-truncated '''
+        top_list_results = []
+        for (label, value) in top_list:
+            top_list_results.append((label, value))
+        results.append(("list", title, top_list_results))
 
     def marked(self):
         ''' Show books with only one format '''

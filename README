@@ -27,3 +27,4 @@ TODO:
 * Truncate x axis labels
 * Test that it works well when no books are available
 * Custom rating columns
+* Lazy calculation of stats
