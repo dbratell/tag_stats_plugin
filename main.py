@@ -111,7 +111,51 @@ class TagStatsDialog(QDialog):
                 self.increase_string_count(counter, tag)
         else:
             self.increase_string_count(counter, "No tag at all")
-        
+
+    def ten_rating_to_five_rating(self, ten_rating):
+        ''' Trying to mimic how calibre shows them (i.e. 7 -> 3) '''
+        if ten_rating:
+            five_rating = int(ten_rating / 2)
+            if not five_rating:
+                five_rating = 1
+            return five_rating
+        return 0
+
+    def truncate_top_list(self, top_list, intended_max_count):
+        ''' Truncates the list, trying to avoid splitting in the middle of a tied group. '''
+        # Examples:
+        # max=2: [1, 1, 2, 2, 3] -> [1, 1]
+        # max=3: [1, 1, 2, 2, 3] -> [1, 1, 2, 2]
+        # max=3: [1, 1, 2, 2, 3, 3, 5] -> [1, 1, 2, 2]
+        # max=3: [1, 1, 2, 2, 2, 2, 2] -> [1, 1, 2]
+        # max=3: [1, 1, 2, 2, 2, 2] -> [1, 1, 2, 2, 2, 2]
+        list_len = len(top_list)
+        if list_len <= intended_max_count:
+            return top_list
+        absolute_max_count = min(2 * intended_max_count, list_len)
+        last_value = top_list[intended_max_count - 1][1]
+        # max=2: [1, 1, 2, 2, 3] -> [1, 1], last_value = 1
+        # max=3: [1, 1, 2, 2, 3] -> [1, 1, 2, 2], last_value = 2
+        # max=3: [1, 1, 2, 2, 3, 3, 5] -> [1, 1, 2, 2], last_value = 2
+        # max=3: [1, 1, 2, 2, 2, 2, 2] -> [1, 1, 2], last_value = 2
+        # max=3: [1, 1, 2, 2, 2, 2] -> [1, 1, 2, 2, 2, 2], last_value = 2
+        if list_len > absolute_max_count and top_list[absolute_max_count][1] == last_value:
+            # Huge tied group at the end. Too many to take them all so
+            # just break at intended_max_count.
+#            print("Huge group: last_value=" + str(last_value))
+            return top_list[:intended_max_count]
+
+        # max=2: [1, 1, 2, 2, 3] -> [1, 1]
+        # max=3: [1, 1, 2, 2, 3] -> [1, 1, 2, 2]
+        # max=3: [1, 1, 2, 2, 3, 3, 5] -> [1, 1, 2, 2]
+        # max=3: [1, 1, 2, 2, 2, 2, 2] -> [1, 1, 2]
+        # max=3: [1, 1, 2, 2, 2, 2] -> [1, 1, 2, 2, 2, 2]
+        i = intended_max_count
+        while i < absolute_max_count and top_list[i][1] == last_value:
+            i = i + 1
+
+        return top_list[:i]
+    
     def count_genres(self):
         ''' Count the genres and list the most common ones. '''
 
@@ -153,7 +197,8 @@ class TagStatsDialog(QDialog):
             # Change globs to regexps.
             location['tags'] = self.tag_list_to_regexp(location['tags'])
             location['count'] = 0
-            
+
+#        print(self.db.FIELD_MAP)
         tags_column_idx = self.db.FIELD_MAP['tags']
         pubdate_column_idx = self.db.FIELD_MAP['pubdate']
         title_column_idx = self.db.FIELD_MAP['title']
@@ -168,13 +213,32 @@ class TagStatsDialog(QDialog):
         common_tags_on_unknown_genre = {}
         common_tags_on_unknown_location = {}
         year_histogram = {}
+        unknown_year_book_count = 0
         rating_integer_histogram = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
         rating_exact_histogram = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0 }
-        unknown_year_book_count = 0
         title_word_counter = {}
-        format_count_histogram = {}
+        format_count_histogram = { 0: 0, 1: 0, 2: 0 }
         format_counter = {}
+        custom_rating_counters = []
+        custom_rating_column_idxs = []
+        custom_rating_labels = []
+        custom_date_counters = []
+        custom_date_column_idxs = []
+        custom_date_labels = []
         
+        custom_column_data = self.db.custom_column_num_map
+#        print(str(custom_column_data))
+        for custom_column in custom_column_data.values():
+#            print(str(custom_column))
+            if custom_column['datatype'] == 'rating':
+                custom_rating_counters.append({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0})
+                custom_rating_column_idxs.append(self.db.FIELD_MAP[custom_column['num']])
+                custom_rating_labels.append(custom_column['name'])
+            elif custom_column['datatype'] == 'datetime':
+                custom_date_counters.append({})
+                custom_date_column_idxs.append(self.db.FIELD_MAP[custom_column['num']])
+                custom_date_labels.append(custom_column['name'])
+            
         for record in self.db.data:
 #        for record in self.db.data.iterall(): # This would iterate over all books in the database.
             # Iterate over visible books.
@@ -235,12 +299,35 @@ class TagStatsDialog(QDialog):
             else:
                 unknown_year_book_count = unknown_year_book_count + 1
 
+            # Custom dates
+            for (custom_date_counter, custom_date_column_idx) in zip(custom_date_counters, custom_date_column_idxs):
+#                print(str(record))
+                custom_date = record[custom_date_column_idx]
+#                print(str(custom_date))
+                if custom_date and custom_date.date() != UNDEFINED_DATE.date():
+                    year = custom_date.year
+                    if year < 1000:
+                        print("Bad date (" + str(custom_date) + ") for book " + book_title + " by " + str(record[self.db.FIELD_MAP['authors']]))
+                        print("UNDEFINED_DATE = " + str(UNDEFINED_DATE))
+                    self.increase_number_count(custom_date_counter, year)
+
+            # Ratings
             rating = record[rating_column_idx]
             if rating:
-                int_rating = int(rating / 2)
+                int_rating = self.ten_rating_to_five_rating(rating)
                 rating_integer_histogram[int_rating] = rating_integer_histogram[int_rating] + 1
                 rating_exact_histogram[rating] = rating_exact_histogram[rating] + 1
 
+            # Custom ratings
+            for (custom_rating_counter, custom_rating_column_idx) in zip(custom_rating_counters, custom_rating_column_idxs):
+#                print(str(record))
+                rating = record[custom_rating_column_idx]
+#                print(str(rating))
+                if rating:
+                    int_rating = self.ten_rating_to_five_rating(rating)
+                    custom_rating_counter[int_rating] = custom_rating_counter[int_rating] + 1
+
+            # Formats
             formats = record[format_column_idx]
             format_count = 0
             if formats:
@@ -258,10 +345,11 @@ class TagStatsDialog(QDialog):
                 del common_tags_on_unknown_location[over_generic_tag]
 
         common_strange_genre_tags = sorted(common_tags_on_unknown_genre.items(), key=itemgetter(1), reverse=True)
-        print("\nCommon tags in books with unknown genre:")
-        for i in range(min(20, len(common_strange_genre_tags))):
-            (tag, count) = common_strange_genre_tags[i]
-            print(str(i + 1) + ". " + tag + " (" + str(count) + ")")
+        # if common_strange_genre_tags:
+        #     print("\nCommon tags in books with unknown genre:")
+        #     for i in range(min(20, len(common_strange_genre_tags))):
+        #         (tag, count) = common_strange_genre_tags[i]
+        #         print(str(i + 1) + ". " + tag + " (" + str(count) + ")")
 
         # The output from this just lists common genres. Meaningless.
         # common_strange_location_tags = sorted(common_tags_on_unknown_location.items(), key=itemgetter(1), reverse=True)
@@ -275,35 +363,39 @@ class TagStatsDialog(QDialog):
             if over_generic_book_title_word in title_word_counter:
                 del title_word_counter[over_generic_book_title_word]
 
-        top_list_max_length = 20
-        common_title_words = sorted(title_word_counter.items(), key=itemgetter(1), reverse=True)[:top_list_max_length]
-        print("\nCommon title words:")
-        common_word_pos = 1
-        for (common_title_word, common_title_word_count) in common_title_words:
-            print(str(common_word_pos) + ". " + common_title_word + " (" + str(common_title_word_count) + ")")
-            common_word_pos = common_word_pos + 1
+        top_list_max_length = 30
+        common_title_words = self.truncate_top_list(sorted(title_word_counter.items(), key=itemgetter(1), reverse=True), top_list_max_length)
+        # print("\nCommon title words:")
+        # common_word_pos = 1
+        # for (common_title_word, common_title_word_count) in common_title_words:
+        #     print(str(common_word_pos) + ". " + common_title_word + " (" + str(common_title_word_count) + ")")
+        #     common_word_pos = common_word_pos + 1
                 
         # for year in sorted(year_histogram.keys()):
         #     print(str(year) + " - " + str(year_histogram[year]))
             
         results = []
         self.add_result_to_results(results, genres, unknown_genre_book_count, total_book_count, "Genre")
-        self.add_histogram_to_results(results, year_histogram, unknown_year_book_count, "Books per year")
-        self.add_histogram_to_results(results, rating_integer_histogram, 0, "Ratings")
-        self.add_histogram_to_results(results, rating_exact_histogram, 0, "Exact ratings")
-        self.add_result_to_results(results, locations, unknown_location_book_count, total_book_count, "Location")
-        self.add_top_list_to_results(results, common_title_words, "Common title words")
+        self.add_histogram_to_results(results, year_histogram, unknown_year_book_count, "Published")
+        self.add_histogram_to_results(results, rating_integer_histogram, 0, "Ratings", total_book_count)
+        self.add_histogram_to_results(results, rating_exact_histogram, 0, "Exact ratings", total_book_count)
+        self.add_top_list_to_results(results, common_title_words, "Common title words", "Word")
+        self.add_top_list_to_results(results, self.truncate_top_list(common_strange_genre_tags, top_list_max_length), "Common 'strange' tags", "Tag")
+        for (custom_rating_counter, custom_rating_label) in zip(custom_rating_counters, custom_rating_labels):
+            self.add_histogram_to_results(results, custom_rating_counter, 0, custom_rating_label)
+        for (custom_date_counter, custom_date_label) in zip(custom_date_counters, custom_date_labels):
+            self.add_histogram_to_results(results, custom_date_counter, 0, custom_date_label)
         self.add_counter_to_results(results, format_counter.items(), total_book_count, "Formats")
-        self.add_histogram_to_results(results, format_count_histogram, 0, "Formats/book")
+        self.add_histogram_to_results(results, format_count_histogram, 0, "Formats/book", total_book_count)
+        self.add_result_to_results(results, locations, unknown_location_book_count, total_book_count, "Location")
         
         dialog = ChartDialog(self.gui, self.icon, results)
         dialog.show()
 
-    def add_histogram_to_results(self, results, histogram, unknown_count, title):
+    def add_histogram_to_results(self, results, histogram, unknown_count, title, histogram_max_value = 1):
         ''' Take a histogram (mapping from sample number to count) and insert
         a result block (title, bars, scale) in results. '''
         histogram_results = []
-        histogram_max_value = 1
         if histogram:
             for sample in range(min(histogram.keys()), max(histogram.keys()) + 1):
                 count_for_sample = 0
@@ -334,12 +426,12 @@ class TagStatsDialog(QDialog):
             category_results.append(("Unknown", unknown_count))
         results.append(("bar", title, category_results, max_value))
 
-    def add_top_list_to_results(self, results, top_list, title):
+    def add_top_list_to_results(self, results, top_list, title, label_label):
         ''' top_list needs to be pre-sorted and pre-truncated '''
         top_list_results = []
         for (label, value) in top_list:
             top_list_results.append((label, value))
-        results.append(("list", title, top_list_results))
+        results.append(("list", title, top_list_results, label_label))
 
     def marked(self):
         ''' Show books with only one format '''

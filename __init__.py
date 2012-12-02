@@ -23,7 +23,7 @@ class TagStatsInterfaceAction(InterfaceActionBase):
     description         = 'Displays statistical information about tag contents'
     supported_platforms = ['windows', 'osx', 'linux']
     author              = 'Daniel Bratell'
-    version             = (0, 1, 3)
+    version             = (0, 1, 4)
     minimum_calibre_version = (0, 7, 53)
 
     #: This field defines the GUI plugin class that contains all the code

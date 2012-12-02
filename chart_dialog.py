@@ -38,8 +38,8 @@ class ChartDialog(qt.QDialog):
                 view = self.create_tab_content(title, max_value, results, vary_colours)
                 tab_widget.addTab(view, title)
             elif chart_type == 'list':
-                (chart_type, title, results) = section
-                tab_widget.addTab(TopListWidget(self.gui, results), title)
+                (chart_type, title, results, label_label) = section
+                tab_widget.addTab(TopListWidget(self.gui, results, label_label), title)
             else:
                 qt.QMessageBox(gui, "Unknown chart type " + str(chart_type));
 
@@ -52,7 +52,7 @@ class ChartDialog(qt.QDialog):
 
         view = qt.QGraphicsView(scene)
 
-        start_hue = 230 # 170 is cyan, 160 is greenish cyan, 190 is sky blue, 
+        start_hue = 225 # 170 is cyan, 160 is greenish cyan, 190 is sky blue, 230 is deep blue (acceptable), 240 is also deep blue, maybe with a hint of purple, 250 is blue with a strong hint of purple, 220 is a slightly pale deep blue
         top_margin = 5
         max_bar_width = 40
         preferred_chart_width = 700
@@ -101,7 +101,6 @@ class ChartDialog(qt.QDialog):
             # The x position is adjusted after the loop when we know the width of the
             # widest label.
             label_obj.setPos(x, percentile_y - metrics.ascent() / 2)
-            metrics = qt.QFontMetrics(label_obj.font())
             widest_label_width = max(widest_label_width, metrics.width(label_text))
             
             line_number = line_number + 1
