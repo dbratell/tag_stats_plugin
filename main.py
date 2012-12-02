@@ -250,7 +250,7 @@ class TagStatsDialog(QDialog):
 
             book_words = set()
             for book_word in book_title.lower().split():
-                book_word = string.strip(book_word, ":&-()")
+                book_word = string.strip(book_word, ":&-(),")
                 if book_word:
                     book_words.add(book_word)
 
