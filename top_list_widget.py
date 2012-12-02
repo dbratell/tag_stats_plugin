@@ -62,7 +62,7 @@ class TopListWidget(qt.QWidget):
        
 
     def create_string_item(self, the_string):
-        item = qt.QStandardItem(str(the_string))
+        item = qt.QStandardItem(the_string)
         item.setEditable(False)
         # if right_align:
         #     #        item.setData(qt.Qt.AlignRight, qt.Qt.TextAlignmentRole)
