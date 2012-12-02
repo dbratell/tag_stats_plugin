@@ -37,32 +37,32 @@ class TagStatsDialog(QDialog):
         self.label = QLabel(prefs['hello_world_msg'])
         self.l.addWidget(self.label)
 
-        self.setWindowTitle('Tag Stats Prototype')
+        self.setWindowTitle('Statistics')
         self.setWindowIcon(icon)
 
-        self.about_button = QPushButton('About', self)
-        self.about_button.clicked.connect(self.about)
-        self.l.addWidget(self.about_button)
+        # self.about_button = QPushButton('About', self)
+        # self.about_button.clicked.connect(self.about)
+        # self.l.addWidget(self.about_button)
 
         self.count_genres_button = QPushButton(
             'Count genres, locations and publication years', self)
         self.count_genres_button.clicked.connect(self.count_genres)
         self.l.addWidget(self.count_genres_button)
 
-        self.marked_button = QPushButton(
-            'Show books with only one format in the calibre GUI', self)
-        self.marked_button.clicked.connect(self.marked)
-        self.l.addWidget(self.marked_button)
+#         self.marked_button = QPushButton(
+#             'Show books with only one format in the calibre GUI', self)
+#         self.marked_button.clicked.connect(self.marked)
+#         self.l.addWidget(self.marked_button)
 
-        self.view_button = QPushButton(
-            'View the most recently added book', self)
-        self.view_button.clicked.connect(self.view)
-        self.l.addWidget(self.view_button)
+#         self.view_button = QPushButton(
+#             'View the most recently added book', self)
+#         self.view_button.clicked.connect(self.view)
+#         self.l.addWidget(self.view_button)
 
-        self.update_metadata_button = QPushButton(
-            'Update metadata in a book\'s files', self)
-#        self.update_metadata_button.clicked.connect(self.update_metadata)
-        self.l.addWidget(self.update_metadata_button)
+#         self.update_metadata_button = QPushButton(
+#             'Update metadata in a book\'s files', self)
+# #        self.update_metadata_button.clicked.connect(self.update_metadata)
+#         self.l.addWidget(self.update_metadata_button)
 
         self.conf_button = QPushButton(
                 'Configure this plugin', self)
