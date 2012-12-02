@@ -52,7 +52,7 @@ class ChartDialog(qt.QDialog):
 
         view = qt.QGraphicsView(scene)
 
-        start_hue = 225 # 170 is cyan, 160 is greenish cyan, 190 is sky blue, 230 is deep blue (acceptable), 240 is also deep blue, maybe with a hint of purple, 250 is blue with a strong hint of purple, 220 is a slightly pale deep blue
+        start_hue = 230 # 170 is cyan, 160 is greenish cyan, 190 is sky blue, 230 is deep blue (acceptable), 240 is also deep blue, maybe with a hint of purple, 250 is blue with a strong hint of purple, 220 is a slightly pale deep blue
         top_margin = 5
         max_bar_width = 40
         preferred_chart_width = 700
